@@ -17,6 +17,11 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\PropertyAccess\PropertyAccess;
 use Symfony\Component\Routing\Annotation\Route;
 
+/**
+ * Class SondageController
+ * @Route("/api", name="sondage_api")
+ * @package App\Controller
+ */
 class SondageController extends AbstractController
 {
     const MAX_LIMIT = 100;
@@ -82,7 +87,7 @@ class SondageController extends AbstractController
      * @param int $id
      * @return JsonResponse
      */
-    public function postSondage(Request $request, ObjectManager $em, $entityType, int $id = null){
+    public function postEntity(Request $request, ObjectManager $em, $entityType, int $id = null){
 
         if (false === array_key_exists($entityType, $this->mapRouteParameterToEntityClass)) {
             return $this->json(['status' => 'failure', 'message' => 'entity '.$entityType.' is not yet managed by this api']);
@@ -109,7 +114,7 @@ class SondageController extends AbstractController
      * @param int $id
      * @return JsonResponse
      */
-    public function deleteSondage(ObjectManager $manager, $entityType, int $id){
+    public function deleteEntity(ObjectManager $manager, $entityType, int $id){
 
         if (false === array_key_exists($entityType, $this->mapRouteParameterToEntityClass)) {
             return $this->json(['status' => 'failure', 'message' => 'entity '.$entityType.' is not yet managed by this api']);
@@ -234,6 +239,6 @@ class SondageController extends AbstractController
 
         return $qb->getQuery()->getResult();
     }
-    
+
 }
 
