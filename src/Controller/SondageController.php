@@ -205,40 +205,63 @@ class SondageController extends AbstractController
     }
 
 
+
     private function fetch($entityClass, $criteria, int $first = null, int $limit = null, array $order = []){
 
         $em = $this->getDoctrine()->getManager();
 
         /** @var EntityRepository $repository */
         $repository = $em->getRepository($entityClass);
+
+
+
         $metadata = $em->getClassMetadata($entityClass);
 
         $qb = $repository->createQueryBuilder('e');
         $qb->setFirstResult($first ?? 0);
         $qb->setMaxResults($limit ?? self::MAX_LIMIT);
+
         foreach ($order as $property => $direction) {
             $qb->addOrderBy($property, $direction);
         }
 
-        $scalarFields = array_filter($metadata->getFieldNames(), function ($field) use ($metadata){
-            return !$metadata->hasAssociation($field);
+//        $scalarFields = array_filter($metadata->getFieldNames(), function ($field) use ($metadata){
+//            return !$metadata->hasAssociation($field);
+//        });
+
+        $textFields = array_filter($metadata->getFieldNames(), function ($field) use ($metadata) {
+            $type = $metadata->getTypeOfField($field);
+            return $type === 'string' || $type === 'text';
         });
 
         foreach ($criteria as $criterion => $value) {
-            if ($metadata->hasField($criterion) && !$metadata->hasAssociation($criterion)) {
-                if($criterion === 'search'){
-                    $searchStatements = array_map(function ($field) use ($qb) {
-                        return $qb->expr()->like('e.'.$field, ':search');
-                    }, $scalarFields);
-                    $qb->andWhere(...$searchStatements)->setParameter('search', $value);
+
+            if ( $metadata->hasAssociation($criterion) || $metadata->hasField($criterion) || $criterion === 'search') {
+                if ($metadata->hasAssociation($criterion)) {
+
+                    $object = $em->find($metadata->getAssociationTargetClass($criterion), (int) $value);
+
+                    $qb->andWhere('e.'.$criterion.' = :'.$criterion)->setParameter(':'.$criterion, $object);
                 }else{
-                    $qb->andWhere('e.'.$criterion.'= :'.$criterion)->setParameter(':'.$criterion, $criterion);
+                    if($criterion === 'search'){
+                        $searchStatements = array_map(function ($field) use ($qb) {
+                            return $qb->expr()->like('e.'.$field, ':search');
+                        }, $textFields);
+
+                        $qb->andWhere(...$searchStatements);
+                        $qb->setParameter('search', '%'.$value.'%');
+                    }else{
+                        $qb->andWhere('e.'.$criterion.' = :'.$criterion)->setParameter(':'.$criterion, $criterion);
+                    }
                 }
+
             }
         }
+
 
         return $qb->getQuery()->getResult();
     }
 
 }
+
 
